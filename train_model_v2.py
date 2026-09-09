@@ -1,24 +1,42 @@
 import pandas as pd
+import glob
+import os
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+from sklearn.metrics import accuracy_score, classification_report
 import pickle
-import os
 
 PASTA_DADOS = "dados"
-CAMINHO_ESQUERDA = f"{PASTA_DADOS}/mao_esquerda/alfabeto.csv"
-CAMINHO_DIREITA = f"{PASTA_DADOS}/mao_direita/alfabeto.csv"
 PASTA_MODELOS = "models"
 os.makedirs(PASTA_MODELOS, exist_ok=True)
 
+COLUNAS_PONTOS = [f"p{i}" for i in range(42)]
 
-def carregar_dados(caminho):
-    if not os.path.exists(caminho):
+
+def carregar_dados(nome_mao):
+    pastas_estaticos = [
+        f"{PASTA_DADOS}/mao_{nome_mao}/alfabeto/estaticos",
+        f"{PASTA_DADOS}/mao_{nome_mao}/numeros/estaticos",
+    ]
+
+    tabelas = []
+
+    for pasta in pastas_estaticos:
+        if not os.path.exists(pasta):
+            continue
+
+        for caminho_arquivo in glob.glob(f"{pasta}/*.csv"):
+            nome_arquivo = os.path.basename(caminho_arquivo)
+            letra = nome_arquivo.split(f"_{nome_mao}")[0]  # "a_direita.csv" -> "a"
+
+            df_letra = pd.read_csv(caminho_arquivo, header=None, names=COLUNAS_PONTOS)
+            df_letra.insert(0, "letra", letra)
+            tabelas.append(df_letra)
+
+    if not tabelas:
         return pd.DataFrame()
-    # primeira coluna = letra, demais = 42 pontos (x,y de 21 landmarks)
-    colunas = ["letra"] + [f"p{i}" for i in range(42)]
-    df = pd.read_csv(caminho, header=None, names=colunas)
-    return df
+
+    return pd.concat(tabelas, ignore_index=True)
 
 
 def treinar_e_avaliar(df, nome_mao):
@@ -28,7 +46,7 @@ def treinar_e_avaliar(df, nome_mao):
 
     print(f"\n===== Mão {nome_mao} =====")
     print(f"Total de amostras: {len(df)}")
-    print("Amostras por letra:")
+    print("Amostras por letra/número:")
     print(df["letra"].value_counts())
 
     X = df.drop("letra", axis=1)
@@ -60,8 +78,8 @@ def treinar_e_avaliar(df, nome_mao):
 
 
 if __name__ == "__main__":
-    df_esquerda = carregar_dados(CAMINHO_ESQUERDA)
-    df_direita = carregar_dados(CAMINHO_DIREITA)
+    df_esquerda = carregar_dados("esquerda")
+    df_direita = carregar_dados("direita")
 
     treinar_e_avaliar(df_esquerda, "esquerda")
     treinar_e_avaliar(df_direita, "direita")

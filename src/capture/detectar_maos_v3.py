@@ -1,3 +1,4 @@
+NOME_EXIBICAO = {"Left": "Esquerda", "Right": "Direita"}
 import cv2
 import mediapipe as mp
 import csv
@@ -19,24 +20,42 @@ INDICE_IRIUN = 0
 cap = cv2.VideoCapture(INDICE_IRIUN)
 
 PASTA_DADOS = "dados"
-CAMINHO_ESQUERDA = f"{PASTA_DADOS}/mao_esquerda/alfabeto.csv"
-CAMINHO_DIREITA = f"{PASTA_DADOS}/mao_direita/alfabeto.csv"
-PASTA_DINAMICOS = f"{PASTA_DADOS}/dinamicos"
-os.makedirs(f"{PASTA_DADOS}/mao_esquerda", exist_ok=True)
-os.makedirs(f"{PASTA_DADOS}/mao_direita", exist_ok=True)
-os.makedirs(PASTA_DINAMICOS, exist_ok=True)
+NUMEROS = [str(n) for n in range(10)]
+
+
+def obter_categoria(tecla):
+    return "numeros" if tecla in NUMEROS else "alfabeto"
+
+
+def caminho_csv_estatico(tecla, nome_mao):
+    categoria = obter_categoria(tecla)
+    pasta_mao = "mao_direita" if nome_mao == "Right" else "mao_esquerda"
+    pasta = f"{PASTA_DADOS}/{pasta_mao}/{categoria}/estaticos"
+    os.makedirs(pasta, exist_ok=True)
+    sufixo_mao = "direita" if nome_mao == "Right" else "esquerda"
+    return f"{pasta}/{tecla}_{sufixo_mao}.csv"
+
+
+def pasta_dinamico(tecla, nome_mao):
+    categoria = obter_categoria(tecla)
+    pasta_mao = "mao_direita" if nome_mao == "Right" else "mao_esquerda"
+    pasta = f"{PASTA_DADOS}/{pasta_mao}/{categoria}/dinamicos/{tecla}"
+    os.makedirs(pasta, exist_ok=True)
+    return pasta
+
 
 TECLAS_VALIDAS = [chr(i) for i in range(ord('a'), ord('z') + 1)] + [str(n) for n in range(10)]
 LETRAS_DINAMICAS = ['h', 'j', 'k', 'x', 'z']  # ajuste com as 7 letras corretas
 
 CAPTURAS_POR_SESSAO = 270  # padrão de capturas contínuas por letra/mão
-
 CAMERA_ESPELHADA = False
+
 
 def corrigir_lado(nome_mao):
     if CAMERA_ESPELHADA:
         return nome_mao
     return "Right" if nome_mao == "Left" else "Left"
+
 
 # Estado da captura contínua (letras estáticas)
 capturando_estatico = False
@@ -71,7 +90,7 @@ while True:
             y_min, y_max = min(ys), max(ys)
 
             cv2.rectangle(frame, (x_min - 20, y_min - 20), (x_max + 20, y_max + 20), (0, 255, 0), 2)
-            cv2.putText(frame, nome_mao, (x_min - 20, y_min - 30),
+            cv2.putText(frame, NOME_EXIBICAO[nome_mao], (x_min - 20, y_min - 30),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
 
             for ponto in mao:
@@ -85,7 +104,6 @@ while True:
                 pontos_temp.append(ponto.y)
             maos_detectadas[nome_mao] = pontos_temp
 
-    # ===== TEXTO DE STATUS NA TELA =====
     if capturando_estatico:
         cv2.putText(frame, f"GRAVANDO: {letra_capturando} ({contador_capturas}/{CAPTURAS_POR_SESSAO})",
                     (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
@@ -101,7 +119,6 @@ while True:
     if tecla_raw == 27:  # ESC
         break
 
-    # ===== INICIAR CAPTURA (estática ou dinâmica) via tecla =====
     if tecla in TECLAS_VALIDAS and not capturando_estatico and not gravando_dinamico:
         if tecla in LETRAS_DINAMICAS:
             gravando_dinamico = True
@@ -114,36 +131,37 @@ while True:
             contador_capturas = 0
             print(f"Captura contínua iniciada: {tecla}")
 
-    # Permite parar a gravação dinâmica apertando a mesma tecla de novo
     elif tecla in LETRAS_DINAMICAS and gravando_dinamico and tecla == letra_dinamica_atual:
         gravando_dinamico = False
         print(f"Gravação parada. {len(sequencia)} frames capturados.")
 
-        pasta_letra = f"{PASTA_DINAMICOS}/{letra_dinamica_atual}"
-        os.makedirs(pasta_letra, exist_ok=True)
-        caminho = f"{pasta_letra}/{letra_dinamica_atual}_{len(os.listdir(pasta_letra))}.txt"
-        with open(caminho, "w") as arquivo:
+        pasta_esquerda = pasta_dinamico(letra_dinamica_atual, "Left")
+        pasta_direita = pasta_dinamico(letra_dinamica_atual, "Right")
+
+        caminho_esquerda = f"{pasta_esquerda}/{letra_dinamica_atual}_{len(os.listdir(pasta_esquerda))}.txt"
+        caminho_direita = f"{pasta_direita}/{letra_dinamica_atual}_{len(os.listdir(pasta_direita))}.txt"
+
+        with open(caminho_esquerda, "w") as arq_esq, open(caminho_direita, "w") as arq_dir:
             for frame_pontos in sequencia:
-                linha = ",".join(str(n) for n in frame_pontos)
-                arquivo.write(linha + "\n")
-        print(f"Salvo em {caminho}")
+                pontos_esq = frame_pontos[:42]
+                pontos_dir = frame_pontos[42:]
+                arq_esq.write(",".join(str(n) for n in pontos_esq) + "\n")
+                arq_dir.write(",".join(str(n) for n in pontos_dir) + "\n")
+
+        print(f"Salvo em {caminho_esquerda} e {caminho_direita}")
         letra_dinamica_atual = None
 
-    # ===== ACUMULA SEQUENCIA DINAMICA =====
     if gravando_dinamico:
         pontos_esquerda = maos_detectadas.get("Left", [0] * 42)
         pontos_direita = maos_detectadas.get("Right", [0] * 42)
         sequencia.append(pontos_esquerda + pontos_direita)
 
-    # ===== CAPTURA CONTINUA ESTATICA =====
     if capturando_estatico:
-        # salva um frame por iteração do loop, para cada mão detectada
         for nome_mao, pontos in maos_detectadas.items():
-            linha = [letra_capturando] + pontos
-            caminho_csv = CAMINHO_ESQUERDA if nome_mao == "Left" else CAMINHO_DIREITA
+            caminho_csv = caminho_csv_estatico(letra_capturando, nome_mao)
             with open(caminho_csv, "a", newline="") as arquivo:
                 escritor = csv.writer(arquivo)
-                escritor.writerow(linha)
+                escritor.writerow(pontos)
 
         if maos_detectadas:
             contador_capturas += 1

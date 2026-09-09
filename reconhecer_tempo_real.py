@@ -19,13 +19,15 @@ INDICE_IRIUN = 0
 cap = cv2.VideoCapture(INDICE_IRIUN)
 
 CAMERA_ESPELHADA = False
+NOME_EXIBICAO = {"Left": "Esquerda", "Right": "Direita"}
+
 
 def corrigir_lado(nome_mao):
     if CAMERA_ESPELHADA:
         return nome_mao
     return "Right" if nome_mao == "Left" else "Left"
 
-# ===== CARREGAR MODELOS TREINADOS =====
+
 PASTA_MODELOS = "models"
 modelo_esquerda = None
 modelo_direita = None
@@ -72,8 +74,7 @@ while True:
                 pontos.append(ponto.x)
                 pontos.append(ponto.y)
 
-            # ===== PREVISÃO COM LIMITE DE CONFIANÇA =====
-            LIMITE_CONFIANCA = 0.78  # só aceita previsão acima de 78%
+            LIMITE_CONFIANCA = 0.78
 
             letra_prevista = "?"
             confianca = 0.0
@@ -90,11 +91,15 @@ while True:
                 else:
                     letra_prevista = "?"
 
-            texto_label = f"{nome_mao}: {letra_prevista} ({confianca:.0%})"
+            texto_mao = f"{NOME_EXIBICAO[nome_mao]}:"
+            texto_letra = f"{letra_prevista} ({confianca:.0%})"
 
             cv2.rectangle(frame, (x_min - 20, y_min - 20), (x_max + 20, y_max + 20), (0, 255, 0), 2)
-            cv2.putText(frame, texto_label, (x_min - 20, y_min - 30),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
+
+            cv2.putText(frame, texto_mao, (x_min - 20, y_min - 50),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
+            cv2.putText(frame, texto_letra, (x_min - 20, y_min - 20),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 255), 2)
 
             for ponto in mao:
                 x = int(ponto.x * w)
@@ -104,7 +109,7 @@ while True:
     cv2.imshow("Tradutor Libras - Tempo Real", frame)
 
     tecla_raw = cv2.waitKey(1) & 0xFF
-    if tecla_raw == 27:  # ESC
+    if tecla_raw == 27:
         break
 
 cap.release()
