@@ -6,9 +6,9 @@ This project was inspired by a Python course I recently completed, and doubles a
 
 ## How it works
 
-1. **Hand detection** — [MediaPipe](https://ai.google.dev/edge/mediapipe/solutions/vision/hand_landmarker) (Tasks API) detects both hands from a webcam feed and extracts 21 landmark points per hand.
-2. **Data collection** — Landmark coordinates are recorded per sign, per hand, and saved to CSV (static signs) or sequential `.txt` files (dynamic/moving signs).
-3. **Classification** — A `RandomForestClassifier` (scikit-learn) is trained on the recorded landmarks — one model per hand — to recognize which letter or number is being signed.
+1. **Hand detection** - [MediaPipe](https://ai.google.dev/edge/mediapipe/solutions/vision/hand_landmarker) (Tasks API) detects both hands from a webcam feed and extracts 21 landmark points per hand.
+2. **Data collection** - Landmark coordinates are recorded per sign, per hand, and saved to CSV (static signs) or sequential `.txt` files (dynamic/moving signs).
+3. **Classification** - A `RandomForestClassifier` (scikit-learn) is trained on the recorded landmarks — one model per hand — to recognize which letter or number is being signed.
 4. **Real-time recognition** — The trained models predict signs live from the camera feed, displaying the predicted letter/number and the model's confidence for each hand.
 
 ## Tech stack
@@ -104,4 +104,4 @@ Shows the camera feed with hand landmarks drawn, along with the predicted letter
 
 ## Acknowledgments
 
-Built as a personal learning project, with Claude (Anthropic) used as a learning aid to understand new concepts (MediaPipe, classifier design, etc.) along the way — implementation, testing, and design decisions are my own.
+Built as a personal learning project, with Claude (Anthropic) used as a learning aid to understand new concepts (MediaPipe, classifier design, etc.) along the way - implementation, testing, and design decisions are my own.
