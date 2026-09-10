@@ -106,7 +106,7 @@ while True:
                 y = int(ponto.y * h)
                 cv2.circle(frame, (x, y), 5, (0, 255, 0), -1)
 
-    cv2.imshow("Tradutor Libras - Tempo Real", frame)
+    cv2.imshow("Detector de Libras - Tempo Real", frame)
 
     tecla_raw = cv2.waitKey(1) & 0xFF
     if tecla_raw == 27:
